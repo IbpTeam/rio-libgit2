@@ -258,6 +258,19 @@ const git_oid *git_tree_entry_id(const git_tree_entry *entry)
 	return &entry->oid;
 }
 
+int git_tree_entry_set_rid(git_tree_entry *entry, const git_oid *id)
+{
+	assert(entry && id);
+	git_oid_cpy(&entry->rid, id);
+	return 0;
+}
+
+const git_oid *git_tree_entry_rid(const git_tree_entry *entry)
+{
+	assert(entry);
+	return &entry->rid;
+}
+
 git_otype git_tree_entry_type(const git_tree_entry *entry)
 {
 	assert(entry);

@@ -18,6 +18,7 @@ struct git_tree_entry {
 	git_oid oid;
 	size_t filename_len;
 	char filename[1];
+	git_oid rid;
 };
 
 struct git_tree {

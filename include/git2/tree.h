@@ -182,7 +182,8 @@ GIT_EXTERN(const char *) git_tree_entry_name(const git_tree_entry *entry);
  * @return the oid of the object
  */
 GIT_EXTERN(const git_oid *) git_tree_entry_id(const git_tree_entry *entry);
-
+GIT_EXTERN(const git_oid *) git_tree_entry_rid(const git_tree_entry *entry);
+GIT_EXTERN(int) git_tree_entry_set_rid(git_tree_entry *entry, const git_oid *id);
 /**
  * Get the type of the object pointed by the entry
  *
