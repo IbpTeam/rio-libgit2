@@ -209,13 +209,13 @@ int git_buf_put(git_buf *buf, const char *data, size_t len)
 {
 	if (len) {
 		size_t new_size;
-
 		assert(data);
-		
+
 		GITERR_CHECK_ALLOC_ADD(&new_size, buf->size, len);
 		GITERR_CHECK_ALLOC_ADD(&new_size, new_size, 1);
 		ENSURE_SIZE(buf, new_size);
 		memmove(buf->ptr + buf->size, data, len);
+
 		buf->size += len;
 		buf->ptr[buf->size] = '\0';
 	}

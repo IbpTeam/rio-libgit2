@@ -1,2 +1,0 @@
-/home/zhangzhiliang/workspace/src/libgit2/build/CMakeFiles/git2.dir
-/home/zhangzhiliang/workspace/src/libgit2/build/CMakeFiles/libgit2_clar.dir

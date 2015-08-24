@@ -62,11 +62,12 @@ typedef struct git_index_entry {
 	uint32_t file_size;
 
 	git_oid id;
-
+	git_oid rid;
+	
 	uint16_t flags;
 	uint16_t flags_extended;
-
 	const char *path;
+
 } git_index_entry;
 
 /**
@@ -513,7 +514,11 @@ GIT_EXTERN(int) git_index_add_frombuffer(
 	git_index *index,
 	const git_index_entry *entry,
 	const void *buffer, size_t len);
-
+GIT_EXTERN(int) git_index_add_from_buffers(
+    	git_index *index, 
+    	git_index_entry *source_entry,
+    	const void *buffer, size_t len, 
+    	const void *d_buf, size_t d_len);
 /**
  * Remove an index entry corresponding to a file on disk
  *

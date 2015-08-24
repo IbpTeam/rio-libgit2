@@ -54,7 +54,7 @@ int git_object__from_odb_object(
 	git_odb_object *odb_obj,
 	git_otype type)
 {
-	int error;
+	int error = 0;
 	size_t object_size;
 	git_object_def *def;
 	git_object *object = NULL;
@@ -79,6 +79,8 @@ int git_object__from_odb_object(
 	GITERR_CHECK_ALLOC(object);
 
 	git_oid_cpy(&object->cached.oid, &odb_obj->cached.oid);
+	git_oid_cpy(&object->cached.rid, &odb_obj->cached.rid);
+
 	object->cached.type = odb_obj->cached.type;
 	object->cached.size = odb_obj->cached.size;
 	object->repo = repo;
@@ -87,10 +89,11 @@ int git_object__from_odb_object(
 	def = &git_objects_table[odb_obj->cached.type];
 	assert(def->free && def->parse);
 
-	if ((error = def->parse(object, odb_obj)) < 0)
+	if ((error = def->parse(object, odb_obj)) < 0){
 		def->free(object);
-	else
+	}else{
 		*object_out = git_cache_store_parsed(&repo->objects, object);
+	}		
 
 	return error;
 }
@@ -193,7 +196,7 @@ int git_object_lookup_prefix(
 	error = git_object__from_odb_object(object_out, repo, odb_obj, type);
 
 	git_odb_object_free(odb_obj);
-
+	
 	return error;
 }
 
