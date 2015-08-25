@@ -21,6 +21,7 @@ enum {
 };
 
 typedef struct {
+	git_oid    rid;
 	git_oid    oid;
 	int16_t    type;  /* git_otype value */
 	uint16_t   flags; /* GIT_CACHE_STORE value */

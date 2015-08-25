@@ -258,6 +258,19 @@ const git_oid *git_tree_entry_id(const git_tree_entry *entry)
 	return &entry->oid;
 }
 
+int git_tree_entry_set_rid(git_tree_entry *entry, const git_oid *rid)
+{
+	assert(entry && rid);
+	git_oid_cpy(&entry->rid, rid);
+	return 0;
+}
+
+const git_oid *git_tree_entry_rid(const git_tree_entry *entry)
+{
+	assert(entry);
+	return &entry->rid;
+}
+
 git_otype git_tree_entry_type(const git_tree_entry *entry)
 {
 	assert(entry);
@@ -387,19 +400,28 @@ int git_tree__parse(void *_tree, git_odb_object *odb_obj)
 
 	if (git_vector_init(&tree->entries, DEFAULT_TREE_SIZE, entry_sort_cmp) < 0)
 		return -1;
-
+		
 	while (buffer < buffer_end) {
 		git_tree_entry *entry;
 		int attr;
 
 		if (git__strtol32(&attr, buffer, &buffer, 8) < 0 || !buffer)
+		{
+			printf("Failed to parse tree. Can't parse filemode\n");
 			return tree_error("Failed to parse tree. Can't parse filemode", NULL);
+		}	
 
 		if (*buffer++ != ' ')
+		{
+			printf("Failed to parse tree. Object is corrupted\n");
 			return tree_error("Failed to parse tree. Object is corrupted", NULL);
-
+		}
+			
 		if (memchr(buffer, 0, buffer_end - buffer) == NULL)
+		{
+			printf("Failed to parse tree. Object is corrupted!\n");
 			return tree_error("Failed to parse tree. Object is corrupted", NULL);
+		}
 
 		/** Allocate the entry and store it in the entries vector */
 		{
@@ -407,19 +429,23 @@ int git_tree__parse(void *_tree, git_odb_object *odb_obj)
 			GITERR_CHECK_ALLOC(entry);
 
 			if (git_vector_insert(&tree->entries, entry) < 0) {
+				printf("git_vector,error!\n");
 				git__free(entry);
 				return -1;
 			}
-
 			entry->attr = attr;
 		}
 
 		while (buffer < buffer_end && *buffer != 0)
 			buffer++;
-
 		buffer++;
 
 		git_oid_fromraw(&entry->oid, (const unsigned char *)buffer);
+		printf("git_tree__parse  :%s\n", git_oid_tostr_s(&entry->oid));
+		buffer += GIT_OID_RAWSZ;
+
+		git_oid_fromraw(&entry->rid, (const unsigned char *)buffer);
+		printf("git_tree__parse  :%s\n", git_oid_tostr_s(&entry->rid));
 		buffer += GIT_OID_RAWSZ;
 	}
 
@@ -443,6 +469,36 @@ static size_t find_next_dir(const char *dirname, git_index *index, size_t start)
 	}
 
 	return i;
+}
+
+static int append_entry_rid(
+	git_treebuilder *bld,
+	const char *filename,
+	const git_oid *id,
+	const git_oid *rid,
+	git_filemode_t filemode)
+{
+	git_tree_entry *entry;
+	int error = 0;
+
+	if (!valid_entry_name(bld->repo, filename))
+		return tree_error("Failed to insert entry. Invalid name for a tree entry", filename);
+
+	entry = alloc_entry(filename);
+	GITERR_CHECK_ALLOC(entry);
+
+	git_oid_cpy(&entry->oid, id);
+	git_oid_cpy(&entry->rid, rid);
+	entry->attr = (uint16_t)filemode;
+
+	git_strmap_insert(bld->map, entry->filename, entry, error);
+	if (error < 0) {
+		git_tree_entry_free(entry);
+		giterr_set(GITERR_TREE, "failed to append entry %s to the tree builder", filename);
+		return -1;
+	}
+	
+	return 0;
 }
 
 static int append_entry(
@@ -517,7 +573,7 @@ static int write_tree(
 		    (dirname_len > 0 && entry->path[dirname_len] != '/')) {
 			break;
 		}
-
+		
 		filename = entry->path + dirname_len;
 		if (*filename == '/')
 			filename++;
@@ -556,7 +612,12 @@ static int write_tree(
 			git__free(subdir);
 			if (error < 0)
 				goto on_error;
-		} else {
+		} else if( !(git_oid_iszero(&entry->rid))){							//  !
+			printf("filename:%s\n",filename);
+			error = append_entry_rid(bld, filename, &entry->id, &entry->rid, entry->mode);
+			if (error < 0)
+				goto on_error;
+		}else {
 			error = append_entry(bld, filename, &entry->id, entry->mode);
 			if (error < 0)
 				goto on_error;
@@ -565,7 +626,7 @@ static int write_tree(
 
 	if (git_treebuilder_write(oid, bld) < 0)
 		goto on_error;
-
+	printf("write treebuilder  success.\n");
 	git_treebuilder_free(bld);
 	return (int)i;
 
@@ -616,8 +677,11 @@ int git_tree__write_index(
 
 	git_pool_clear(&index->tree_pool);
 
+	printf("git tree lookup  %s\n", git_oid_tostr_s(oid));
 	if ((ret = git_tree_lookup(&tree, repo, oid)) < 0)
+	{
 		return ret;
+	}	
 
 	/* Read the tree cache into the index */
 	ret = git_tree_cache_read_tree(&index->tree, tree, &index->tree_pool);
@@ -773,7 +837,10 @@ int git_treebuilder_write(git_oid *oid, git_treebuilder *bld)
 		git_buf_printf(&tree, "%o ", entry->attr);
 		git_buf_put(&tree, entry->filename, entry->filename_len + 1);
 		git_buf_put(&tree, (char *)entry->oid.id, GIT_OID_RAWSZ);
-
+		
+		if( !(git_oid_iszero(&entry->rid)))
+			git_buf_put(&tree, (char *)entry->rid.id, GIT_OID_RAWSZ);
+				
 		if (git_buf_oom(&tree))
 			error = -1;
 	}
